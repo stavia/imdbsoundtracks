@@ -17,7 +17,7 @@ type Scraper interface {
 type Service struct {
 }
 
-// GetSoundtracks returns the soundtracks found for the given imdbID
+// Soundtracks returns the soundtracks found for the given imdbID
 func (s *Service) Soundtracks(imdbID string) (soundtracks []Soundtrack) {
 	url := fmt.Sprintf("https://www.imdb.com/title/%s/soundtrack", imdbID)
 	doc, err := s.GetGoqueryDocument(url)
@@ -89,8 +89,6 @@ func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) 
 			}
 		}
 	}
-	//log.Println("RESULT", soundtrack)
-	//log.Fatalln("FIN")
 	return soundtrack
 }
 
@@ -111,31 +109,20 @@ func getArtistFromText(text string, role string) (artist Artist) {
 }
 
 func appendAmpersandArtist(artistNodes *goquery.Selection, artistDoc *goquery.Document, role string, soundtrack *Soundtrack) {
-	artistWithAmpersandFound := false
-	var artistNames []string
+	line := artistDoc.Text()
 	artistNodes.Each(func(index int, artist *goquery.Selection) {
-		artistNames = append(artistNames, artist.Text())
-		if strings.Contains(artist.Text(), "&amp;") {
-			artistWithAmpersandFound = true
-			return
+		if !strings.Contains(artist.Text(), "&") {
+			line = strings.TrimSpace(strings.Replace(line, artist.Text(), "", -1))
 		}
 	})
-	if !artistWithAmpersandFound {
-		splits := strings.Split(artistDoc.Text(), "&")
-		foundKey := false
-		for key, split := range splits {
-			for _, name := range artistNames {
-				if (split == name) {
-					foundKey = true
-					break
-				}
-			}
-			if (foundKey) {
-				artistFound := getArtistFromText(splits[key], role)
-				if artistFound.Role != "" {
-					soundtrack.Artists = appendArtist(soundtrack.Artists, artistFound)
-				}
-			}
+	splits := strings.Split(line, "&")
+	for _, split := range splits {
+		if (split == "") {
+			continue
+		}
+		artistFound := getArtistFromText(split, role)
+		if artistFound.Role != "" {
+			soundtrack.Artists = appendArtist(soundtrack.Artists, artistFound)
 		}
 	}
 }
@@ -147,7 +134,6 @@ func GetArtistFromGoquerySelection(artistSelection *goquery.Selection) (artist A
 		artist.ImdbID = getArtistImdbID(href)
 		//artits.Image = GetArtistImage(artistImdbID)
 	}
-	log.Println(artist)
 	return artist
 }
 
