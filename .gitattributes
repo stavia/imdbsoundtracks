@@ -1,4 +1,3 @@
-*.go linguist-detectable=true
-*.golden linguist-detectable=false
-*.html linguist-detectable=false
-*.json linguist-detectable=false
+*.go linguist-language=Go
+*.html linguist-language=Go
+*.json linguist-language=Go
