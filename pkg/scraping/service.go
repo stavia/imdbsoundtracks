@@ -64,7 +64,7 @@ func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) 
 			if len(matches) != 3 {
 				continue
 			}
-			line := strings.Split(strings.Replace(matches[2], " and ", ",", -1), ",")
+			line := strings.Split(replaceAndByCommas(matches[2]), ",")
 			for _, artist := range line {
 				ampersandFound := strings.Contains(artist, "&amp;")
 				var artistFound Artist
@@ -191,4 +191,15 @@ func getArtistImdbID(url string) string {
 	re := regexp.MustCompile(`\/name\/(.*)\/`)
 	matches := re.FindStringSubmatch(url)
 	return matches[1]
+}
+
+func replaceAndByCommas(line string) string {
+	var re = regexp.MustCompile(`(?m)^([^<]*)<\w+.*/\w+>([^<]*)$`)
+    for i, match := range re.FindStringSubmatch(line) {
+    	if (i != 0) {
+    		var rightText = strings.Replace(match, " and ", ",", -1)
+	        line = strings.Replace(line, match, rightText, -1)
+    	}
+	}
+	return line
 }
