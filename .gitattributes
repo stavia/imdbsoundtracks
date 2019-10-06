@@ -1,0 +1,4 @@
+*.go linguist-detectable=true
+*.golden linguist-detectable=false
+*.html linguist-detectable=false
+*.json linguist-detectable=false
