@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
-	"fmt"
 
 	"github.com/stavia/imdbsoundtracks/pkg/scraping"
 )
@@ -20,14 +18,6 @@ func main() {
 	scraper := new(scraping.Service)
 	soundtracks := scraper.Soundtracks(*arg1)
 	for _, soundtrack := range soundtracks {
-		prettyPrint(soundtrack)
+		soundtrack.PrettyPrint()
 	}
-}
-
-func prettyPrint(v interface{}) (err error) {
-	b, err := json.MarshalIndent(v, "", "  ")
-	if err == nil {
-		fmt.Println(string(b))
-	}
-	return
 }

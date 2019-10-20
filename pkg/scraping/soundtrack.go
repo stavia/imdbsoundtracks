@@ -1,5 +1,10 @@
 package scraping
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 // Artist defines the properties of a artist
 type Artist struct {
 	Name   string `json:"name"`
@@ -12,4 +17,13 @@ type Artist struct {
 type Soundtrack struct {
 	Name    string `json:"name"`
 	Artists []Artist
+}
+
+// PrettyPrint provides pretty-print for a soundtrack
+func (s *Soundtrack) PrettyPrint() {
+	bytes, err := json.MarshalIndent(s, "", "  ")
+	if err == nil {
+		fmt.Println(string(bytes))
+	}
+	return
 }
