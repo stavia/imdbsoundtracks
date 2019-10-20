@@ -1,4 +1,4 @@
-# imdbsoundtracks @
+# imdbsoundtracks
 imdbsoundtracks is a Go library for retrieving soundtracks from IMDb.
 
 ## Usage ##
