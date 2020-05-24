@@ -19,6 +19,9 @@ type Service struct {
 
 // Soundtracks returns the soundtracks found for the given imdbID
 func (s *Service) Soundtracks(imdbID string) (soundtracks []Soundtrack) {
+	if !strings.Contains(imdbID, "tt") {
+		imdbID = "tt" + imdbID
+	}
 	url := fmt.Sprintf("https://www.imdb.com/title/%s/soundtrack", imdbID)
 	doc, err := s.GetGoqueryDocument(url)
 	if err != nil {
@@ -37,9 +40,6 @@ func (s *Service) GetGoqueryDocument(url string) (doc *goquery.Document, err err
 // GetSoundtracks returns all soundtracks found for the given goquery Document
 func (s *Service) GetSoundtracks(doc *goquery.Document) (soundtracks []Soundtrack) {
 	doc.Find("#soundtracks_content").Find(".list").Find("div").Each(func(index int, selection *goquery.Selection) {
-		// if index == 0 {
-		// 	return
-		// }
 		soundtrack := s.GetSoundtrack(selection)
 		if len(soundtrack.Artists) > 0 {
 			soundtracks = append(soundtracks, soundtrack)
@@ -76,7 +76,7 @@ func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) 
 				}
 				if artistNodes.Length() > 0 {
 					artistNodes.Each(func(index int, artist *goquery.Selection) {
-						artistFound = GetArtistFromGoquerySelection(artist)
+						artistFound = setArtistImdbIDFromGoquerySelection(artist)
 						artistFound.Role = role
 						soundtrack.Artists = appendArtist(soundtrack.Artists, artistFound)
 					})
@@ -117,7 +117,7 @@ func appendAmpersandArtist(artistNodes *goquery.Selection, artistDoc *goquery.Do
 	})
 	splits := strings.Split(line, "&")
 	for _, split := range splits {
-		if (split == "") {
+		if split == "" {
 			continue
 		}
 		artistFound := getArtistFromText(split, role)
@@ -127,17 +127,17 @@ func appendAmpersandArtist(artistNodes *goquery.Selection, artistDoc *goquery.Do
 	}
 }
 
-func GetArtistFromGoquerySelection(artistSelection *goquery.Selection) (artist Artist) {
+func setArtistImdbIDFromGoquerySelection(artistSelection *goquery.Selection) (artist Artist) {
 	artist.Name = artistSelection.Text()
 	href, exist := artistSelection.Attr("href")
 	if exist {
 		artist.ImdbID = getArtistImdbID(href)
-		//artits.Image = GetArtistImage(artistImdbID)
+		//artist.Image = GetArtistImage(artist.ImdbID)
 	}
 	return artist
 }
 
-func GetArtistImage(artistImdbID string) (urlImage string) {
+func getArtistImage(artistImdbID string) (urlImage string) {
 	url := fmt.Sprintf("https://www.imdb.com/name/%s/", artistImdbID)
 	doc, err := goquery.NewDocument(url)
 	if err != nil {
@@ -195,11 +195,11 @@ func getArtistImdbID(url string) string {
 
 func replaceAndByCommas(line string) string {
 	var re = regexp.MustCompile(`(?m)^([^<]*)<\w+.*/\w+>([^<]*)$`)
-    for i, match := range re.FindStringSubmatch(line) {
-    	if (i != 0) {
-    		var rightText = strings.Replace(match, " and ", ",", -1)
-	        line = strings.Replace(line, match, rightText, -1)
-    	}
+	for i, match := range re.FindStringSubmatch(line) {
+		if i != 0 {
+			var rightText = strings.Replace(match, " and ", ",", -1)
+			line = strings.Replace(line, match, rightText, -1)
+		}
 	}
 	return line
 }
