@@ -1,4 +1,4 @@
-module scraping
+module github.com/stavia/imdbsoundtracks/pkg/scraping
 
 go 1.12
 
