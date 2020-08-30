@@ -45,6 +45,7 @@ func (s *Service) GetSoundtracks(doc *goquery.Document) (soundtracks []Soundtrac
 			soundtracks = append(soundtracks, soundtrack)
 		}
 	})
+
 	return soundtracks
 }
 
@@ -194,12 +195,5 @@ func getArtistImdbID(url string) string {
 }
 
 func replaceAndByCommas(line string) string {
-	var re = regexp.MustCompile(`(?m)^([^<]*)<\w+.*/\w+>([^<]*)$`)
-	for i, match := range re.FindStringSubmatch(line) {
-		if i != 0 {
-			var rightText = strings.Replace(match, " and ", ",", -1)
-			line = strings.Replace(line, match, rightText, -1)
-		}
-	}
-	return line
+	return strings.Replace(line, ", and ", ", ", -1)
 }
