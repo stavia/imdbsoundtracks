@@ -67,6 +67,9 @@ func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) 
 			}
 			line := strings.Split(replaceAndByCommas(matches[2]), ",")
 			for _, artist := range line {
+				if skipLine(artist) {
+					continue
+				}
 				ampersandFound := strings.Contains(artist, "&amp;")
 				var artistFound Artist
 				artistDoc, _ := goquery.NewDocumentFromReader(strings.NewReader((artist)))
@@ -109,6 +112,19 @@ func getArtistFromText(text string, role string) (artist Artist) {
 	return artist
 }
 
+func skipLine(text string) bool {
+	return strings.Contains(text, "(uncredited)")
+}
+
+func skipArtist(artist Artist) bool {
+	return strings.Contains(artist.Name, "Orchestra") || strings.Contains(artist.Name, "orchestra")
+}
+
+func cleanArtistName(artist *Artist) {
+	var re = regexp.MustCompile(`(?mi)and his orchestra`)
+	artist.Name = strings.TrimSpace(re.ReplaceAllString(artist.Name, ""))
+}
+
 func appendAmpersandArtist(artistNodes *goquery.Selection, artistDoc *goquery.Document, role string, soundtrack *Soundtrack) {
 	line := artistDoc.Text()
 	artistNodes.Each(func(index int, artist *goquery.Selection) {
@@ -149,6 +165,10 @@ func getArtistImage(artistImdbID string) (urlImage string) {
 }
 
 func appendArtist(artists []Artist, artist Artist) []Artist {
+	cleanArtistName(&artist)
+	if skipArtist(artist) {
+		return artists
+	}
 	for _, existArtist := range artists {
 		if existArtist == artist {
 			return artists
