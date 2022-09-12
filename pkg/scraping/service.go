@@ -74,17 +74,23 @@ func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) 
 				var artistFound Artist
 				artistDoc, _ := goquery.NewDocumentFromReader(strings.NewReader((artist)))
 				artistNodes := artistDoc.Find("a")
-				if ampersandFound {
-					// check if there is any artist name that contains ampersand
-					appendAmpersandArtist(artistNodes, artistDoc, role, &soundtrack)
-				}
 				if artistNodes.Length() > 0 {
+					if ampersandFound {
+						// check if there is any artist name that contains ampersand
+						appendAmpersandArtist(artistNodes, artistDoc, role, &soundtrack)
+					}
 					artistNodes.Each(func(index int, artist *goquery.Selection) {
 						artistFound = setArtistImdbIDFromGoquerySelection(artist)
 						artistFound.Role = role
 						soundtrack.Artists = appendArtist(soundtrack.Artists, artistFound)
 					})
 				} else {
+					if strings.Contains(artistDoc.Text(), "&") {
+						// Skip artist. Impossible to know the name of the artist
+						// Example (tt10164206):
+						// Performed by Paddy Nash & The Happy Enchiladas
+						continue
+					}
 					artistFound = getArtistFromText(artistDoc.Text(), role)
 					if artistFound.Role != "" {
 						soundtrack.Artists = appendArtist(soundtrack.Artists, artistFound)
@@ -179,19 +185,12 @@ func appendArtist(artists []Artist, artist Artist) []Artist {
 
 func standardRole(role string) (result []string) {
 	role = strings.ToLower(strings.TrimSpace(role))
-	if strings.Contains(role, "music by") {
-		result = append(result, "composer")
-	}
 	if strings.Contains(role, "performed") {
 		result = append(result, "performer")
 	}
 	if strings.Contains(role, "written") ||
-		strings.Contains(role, "lyrics") ||
-		strings.Contains(role, "composed") {
+		strings.Contains(role, "lyrics") {
 		result = append(result, "writer")
-	}
-	if strings.HasPrefix(role, "by") {
-		result = append(result, "composer")
 	}
 	if strings.Contains(role, "produced by") {
 		result = append(result, "producer")
@@ -199,13 +198,14 @@ func standardRole(role string) (result []string) {
 	if strings.Contains(role, "arranged by") {
 		result = append(result, "music arranger")
 	}
+	if strings.Contains(role, "music by") ||
+		strings.Contains(role, "composed by") {
+		result = append(result, "composer")
+	}
+	if len(result) == 0 && strings.HasPrefix(role, "by") {
+		result = append(result, "composer")
+	}
 	return result
-}
-
-func getImdbID(url string) string {
-	re := regexp.MustCompile(`tt[0-9]{7}`)
-	matches := re.FindStringSubmatch(url)
-	return matches[0]
 }
 
 func getArtistImdbID(url string) string {
