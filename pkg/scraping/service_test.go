@@ -93,3 +93,35 @@ func TestGetSoundtrack5(t *testing.T) {
 		t.Errorf("Expected \n%v, got \n%v", string(goldenData), string(jsonData))
 	}
 }
+
+func TestGetSoundtrack6(t *testing.T) {
+	file, _ := os.Open(filepath.Join("test-fixtures", "soundtrack6.html"))
+	doc, _ := goquery.NewDocumentFromReader(file)
+	service := Service{}
+	soundtracks := service.GetSoundtracks(doc)
+	jsonData, _ := json.Marshal(soundtracks)
+	goldenData, err := ioutil.ReadFile(filepath.Join("test-fixtures", "soundtrack6.golden"))
+	if err != nil {
+		t.Fatalf("failed reading .golden: %s", err)
+	}
+	if !bytes.Equal(jsonData, goldenData) {
+		t.Errorf("JSON does not match .golden file")
+		t.Errorf("Expected \n%v, got \n%v", string(goldenData), string(jsonData))
+	}
+}
+
+func TestGetSoundtrack7(t *testing.T) {
+	file, _ := os.Open(filepath.Join("test-fixtures", "soundtrack7.html"))
+	doc, _ := goquery.NewDocumentFromReader(file)
+	service := Service{}
+	soundtracks := service.GetSoundtracks(doc)
+	jsonData, _ := json.Marshal(soundtracks)
+	goldenData, err := ioutil.ReadFile(filepath.Join("test-fixtures", "soundtrack7.golden"))
+	if err != nil {
+		t.Fatalf("failed reading .golden: %s", err)
+	}
+	if !bytes.Equal(jsonData, goldenData) {
+		t.Errorf("JSON does not match .golden file")
+		t.Errorf("Expected \n%v, got \n%v", string(goldenData), string(jsonData))
+	}
+}

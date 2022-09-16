@@ -140,7 +140,13 @@ func appendAmpersandArtist(artistNodes *goquery.Selection, artistDoc *goquery.Do
 	})
 	splits := strings.Split(line, "&")
 	for _, split := range splits {
-		if split == "" {
+		split = strings.TrimSpace(split)
+		// feat. problem -> tt10223460
+		if split == "" || split == "feat." {
+			continue
+		}
+		// problem -> tt5315212
+		if strings.Contains(split, "(as") {
 			continue
 		}
 		artistFound := getArtistFromText(split, role)
@@ -185,6 +191,9 @@ func appendArtist(artists []Artist, artist Artist) []Artist {
 
 func standardRole(role string) (result []string) {
 	role = strings.ToLower(strings.TrimSpace(role))
+	if strings.Contains(role, "by arrangement") {
+		return result
+	}
 	if strings.Contains(role, "performed") {
 		result = append(result, "performer")
 	}
