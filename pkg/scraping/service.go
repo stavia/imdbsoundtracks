@@ -67,6 +67,7 @@ func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) 
 			}
 			line := strings.Split(replaceAndByCommas(matches[2]), ",")
 			for _, artist := range line {
+				artist = cleanText(artist)
 				if skipLine(artist) {
 					continue
 				}
@@ -119,7 +120,7 @@ func getArtistFromText(text string, role string) (artist Artist) {
 }
 
 func skipLine(text string) bool {
-	return strings.Contains(text, "(uncredited)")
+	return text == "" || strings.Contains(text, "(uncredited)")
 }
 
 func skipArtist(artist Artist) bool {
@@ -129,6 +130,14 @@ func skipArtist(artist Artist) bool {
 func cleanArtistName(artist *Artist) {
 	var re = regexp.MustCompile(`(?mi)and his orchestra`)
 	artist.Name = strings.TrimSpace(re.ReplaceAllString(artist.Name, ""))
+}
+
+func cleanText(text string) string {
+	text = strings.TrimSpace(text)
+	regex := `<br.>`
+	r := regexp.MustCompile(regex)
+	text = r.ReplaceAllString(text, "")
+	return text
 }
 
 func appendAmpersandArtist(artistNodes *goquery.Selection, artistDoc *goquery.Document, role string, soundtrack *Soundtrack) {
