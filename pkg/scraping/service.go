@@ -54,7 +54,7 @@ func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) 
 	html, _ := doc.Html()
 	splits := strings.Split(html, "\n")
 	soundtrack.Name = getSoundtrackName(splits[0])
-	byRegexp := regexp.MustCompile(`(.*)by(.*)`)
+	byRegexp := regexp.MustCompile(`(.*)\sby\s(.*)`)
 	for i := 1; i < len(splits); i++ {
 		matches := byRegexp.FindStringSubmatch(splits[i])
 		rolesFound := standardRole(splits[i])
@@ -120,6 +120,7 @@ func getArtistFromText(text string, role string) (artist Artist) {
 }
 
 func skipLine(text string) bool {
+	text = strings.TrimSpace(text)
 	return text == "" || strings.Contains(text, "(uncredited)")
 }
 
@@ -134,10 +135,17 @@ func cleanArtistName(artist *Artist) {
 
 func cleanText(text string) string {
 	text = strings.TrimSpace(text)
-	regex := `<br.>`
+	regex := `\[link: .*\]`
 	r := regexp.MustCompile(regex)
 	text = r.ReplaceAllString(text, "")
-	return text
+	regex = `<br.>|\:\s`
+	r = regexp.MustCompile(regex)
+	text = r.ReplaceAllString(text, "")
+	regex = `\(.*?\)`
+	r = regexp.MustCompile(regex)
+	text = r.ReplaceAllString(text, "")
+
+	return strings.TrimSpace(text)
 }
 
 func appendAmpersandArtist(artistNodes *goquery.Selection, artistDoc *goquery.Document, role string, soundtrack *Soundtrack) {
@@ -151,7 +159,7 @@ func appendAmpersandArtist(artistNodes *goquery.Selection, artistDoc *goquery.Do
 	for _, split := range splits {
 		split = strings.TrimSpace(split)
 		// feat. problem -> tt10223460
-		if split == "" || split == "feat." {
+		if split == "" || split == "feat." || split == "/" {
 			continue
 		}
 		// problem -> tt5315212

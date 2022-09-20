@@ -141,3 +141,19 @@ func TestGetSoundtrack8(t *testing.T) {
 		t.Errorf("Expected \n%v, got \n%v", string(goldenData), string(jsonData))
 	}
 }
+
+func TestGetSoundtrack9(t *testing.T) {
+	file, _ := os.Open(filepath.Join("test-fixtures", "soundtrack9.html"))
+	doc, _ := goquery.NewDocumentFromReader(file)
+	service := Service{}
+	soundtracks := service.GetSoundtracks(doc)
+	jsonData, _ := json.Marshal(soundtracks)
+	goldenData, err := ioutil.ReadFile(filepath.Join("test-fixtures", "soundtrack9.golden"))
+	if err != nil {
+		t.Fatalf("failed reading .golden: %s", err)
+	}
+	if !bytes.Equal(jsonData, goldenData) {
+		t.Errorf("JSON does not match .golden file")
+		t.Errorf("Expected \n%v, got \n%v", string(goldenData), string(jsonData))
+	}
+}
