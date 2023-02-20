@@ -39,7 +39,7 @@ func (s *Service) GetGoqueryDocument(url string) (doc *goquery.Document, err err
 
 // GetSoundtracks returns all soundtracks found for the given goquery Document
 func (s *Service) GetSoundtracks(doc *goquery.Document) (soundtracks []Soundtrack) {
-	doc.Find("#soundtracks_content").Find(".list").Find("div").Each(func(index int, selection *goquery.Selection) {
+	doc.Find(".ipc-metadata-list").First().Find("li").Each(func(index int, selection *goquery.Selection) {
 		soundtrack := s.GetSoundtrack(selection)
 		if len(soundtrack.Artists) > 0 {
 			soundtracks = append(soundtracks, soundtrack)
@@ -51,16 +51,16 @@ func (s *Service) GetSoundtracks(doc *goquery.Document) (soundtracks []Soundtrac
 
 // GetSoundtrack extracts from the given text all the info of a soundtrack
 func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) {
-	html, _ := doc.Html()
-	splits := strings.Split(html, "\n")
-	soundtrack.Name = getSoundtrackName(splits[0])
+	soundtrack.Name = getSoundtrackName(doc)
 	byRegexp := regexp.MustCompile(`(.*)\sby\s(.*)`)
-	for i := 1; i < len(splits); i++ {
-		matches := byRegexp.FindStringSubmatch(splits[i])
-		rolesFound := standardRole(splits[i])
+	doc.Find(".ipc-html-content-inner-div").Each(func(index int, selection *goquery.Selection) {
+		itemText := selection.Text()
+		itemHtml, _ := selection.Html()
+		rolesFound := standardRole(itemText)
 		if len(rolesFound) == 0 {
-			continue
+			return
 		}
+		matches := byRegexp.FindStringSubmatch(itemHtml)
 		for _, role := range rolesFound {
 			if len(matches) != 3 {
 				continue
@@ -99,13 +99,12 @@ func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) 
 				}
 			}
 		}
-	}
+	})
 	return soundtrack
 }
 
-func getSoundtrackName(text string) string {
-	document, _ := goquery.NewDocumentFromReader(strings.NewReader((text)))
-	return strings.TrimSpace(document.Text())
+func getSoundtrackName(doc *goquery.Selection) string {
+	return doc.Find("button").Text()
 }
 
 func getArtistFromText(text string, role string) (artist Artist) {
@@ -178,7 +177,7 @@ func setArtistImdbIDFromGoquerySelection(artistSelection *goquery.Selection) (ar
 	href, exist := artistSelection.Attr("href")
 	if exist {
 		artist.ImdbID = getArtistImdbID(href)
-		//artist.Image = GetArtistImage(artist.ImdbID)
+		artist.Image = getArtistImage(artist.ImdbID)
 	}
 	return artist
 }
