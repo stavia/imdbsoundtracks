@@ -2,7 +2,7 @@ module github.com/stavia/imdbsoundtracks/cmd/imdbsoundtracks
 
 go 1.20
 
-require github.com/stavia/imdbsoundtracks/pkg/scraping v0.0.0-20230121080047-64d323e5c9a4
+require github.com/stavia/imdbsoundtracks/pkg/scraping v0.0.0-20230220165459-852a6c072a11
 
 require (
 	github.com/PuerkitoBio/goquery v1.8.1 // indirect
