@@ -3,6 +3,7 @@ package scraping
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -33,7 +34,25 @@ func (s *Service) Soundtracks(imdbID string) (soundtracks []Soundtrack) {
 
 // GetGoqueryDocument returns a Document that takes a string URL as argument
 func (s *Service) GetGoqueryDocument(url string) (doc *goquery.Document, err error) {
-	doc, err = goquery.NewDocument(url)
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36")
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		log.Fatalln(fmt.Errorf("status code error: %d %s, url: %s", res.StatusCode, res.Status, url))
+	}
+	doc, err = goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
 	return doc, err
 }
 
