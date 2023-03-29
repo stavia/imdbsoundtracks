@@ -104,7 +104,7 @@ func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) 
 }
 
 func getSoundtrackName(doc *goquery.Selection) string {
-	return doc.Find("button").Text()
+	return doc.Find(".ipc-metadata-list-item__label").Text()
 }
 
 func getArtistFromText(text string, role string) (artist Artist) {
