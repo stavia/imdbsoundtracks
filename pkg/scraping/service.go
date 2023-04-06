@@ -1,6 +1,7 @@
 package scraping
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -100,9 +101,11 @@ func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) 
 						appendAmpersandArtist(artistNodes, artistDoc, role, &soundtrack)
 					}
 					artistNodes.Each(func(index int, artist *goquery.Selection) {
-						artistFound = setArtistImdbIDFromGoquerySelection(artist)
-						artistFound.Role = role
-						soundtrack.Artists = appendArtist(soundtrack.Artists, artistFound)
+						artistFound, err := setArtistImdbIDFromGoquerySelection(artist)
+						if err == nil {
+							artistFound.Role = role
+							soundtrack.Artists = appendArtist(soundtrack.Artists, artistFound)
+						}
 					})
 				} else {
 					if strings.Contains(artistDoc.Text(), "&") {
@@ -191,14 +194,17 @@ func appendAmpersandArtist(artistNodes *goquery.Selection, artistDoc *goquery.Do
 	}
 }
 
-func setArtistImdbIDFromGoquerySelection(artistSelection *goquery.Selection) (artist Artist) {
+func setArtistImdbIDFromGoquerySelection(artistSelection *goquery.Selection) (artist Artist, err error) {
 	artist.Name = artistSelection.Text()
 	href, exist := artistSelection.Attr("href")
 	if exist {
 		artist.ImdbID = getArtistImdbID(href)
+		if artist.ImdbID == "" {
+			return artist, errors.New("Artist not found")
+		}
 		artist.Image = getArtistImage(artist.ImdbID)
 	}
-	return artist
+	return artist, err
 }
 
 func getArtistImage(artistImdbID string) (urlImage string) {
@@ -252,10 +258,13 @@ func standardRole(role string) (result []string) {
 	return result
 }
 
-func getArtistImdbID(url string) string {
+func getArtistImdbID(url string) (artistImdbID string) {
 	re := regexp.MustCompile(`\/name\/(.*)\/`)
 	matches := re.FindStringSubmatch(url)
-	return matches[1]
+	if len(matches) > 1 {
+		artistImdbID = matches[1]
+	}
+	return artistImdbID
 }
 
 func replaceAndByCommas(line string) string {
