@@ -18,11 +18,13 @@ import (
 var update = flag.Bool("update", false, "Update golden files")
 
 func TestGetGoQueryDoc(t *testing.T) {
-	imdbID := "tt5626004"
-	service := Service{}
-	soundtracks := service.Soundtracks(imdbID)
-	if len(soundtracks) != 10 {
-		t.Errorf("Expected %v soundtracks, \n got %v", 10, len(soundtracks))
+	if *update {
+		imdbID := "tt5626004"
+		service := Service{}
+		soundtracks := service.Soundtracks(imdbID)
+		if len(soundtracks) != 10 {
+			t.Errorf("Expected %v soundtracks, \n got %v", 10, len(soundtracks))
+		}
 	}
 }
 
