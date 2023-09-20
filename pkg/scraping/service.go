@@ -72,6 +72,9 @@ func (s *Service) GetSoundtracks(doc *goquery.Document) (soundtracks []Soundtrac
 // GetSoundtrack extracts from the given text all the info of a soundtrack
 func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) {
 	soundtrack.Name = getSoundtrackName(doc)
+	if soundtrack.Name == "" {
+		return soundtrack
+	}
 	byRegexp := regexp.MustCompile(`(.*)\sby\s(.*)`)
 	doc.Find(".ipc-html-content-inner-div").Each(func(index int, selection *goquery.Selection) {
 		itemText := selection.Text()

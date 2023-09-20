@@ -168,6 +168,26 @@ func TestGetSoundtrackAlienAbduction(t *testing.T) {
 	}
 }
 
+func TestGetSoundtrackSwitch(t *testing.T) {
+	if *update {
+		content := getHtml("tt7139110")
+		os.WriteFile(filepath.Join("test-fixtures", "switch.html"), content, 0644)
+	}
+	file, _ := os.Open(filepath.Join("test-fixtures", "switch.html"))
+	doc, _ := goquery.NewDocumentFromReader(file)
+	service := Service{}
+	soundtracks := service.GetSoundtracks(doc)
+	jsonData, _ := json.Marshal(soundtracks)
+	goldenData, err := ioutil.ReadFile(filepath.Join("test-fixtures", "switch.golden"))
+	if err != nil {
+		t.Fatalf("failed reading .golden: %s", err)
+	}
+	if !bytes.Equal(jsonData, goldenData) {
+		t.Errorf("JSON does not match .golden file")
+		t.Errorf("Expected \n%v, got \n%v", string(goldenData), string(jsonData))
+	}
+}
+
 func getHtml(imdbID string) []byte {
 	url := fmt.Sprintf("https://www.imdb.com/title/%s/soundtrack", imdbID)
 	client := &http.Client{}
