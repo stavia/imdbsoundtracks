@@ -25,5 +25,4 @@ func (s *Soundtrack) PrettyPrint() {
 	if err == nil {
 		fmt.Println(string(bytes))
 	}
-	return
 }
