@@ -3,7 +3,6 @@ package scraping
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -13,64 +12,124 @@ import (
 
 // Scraper provides soundtrack scrapping operations
 type Scraper interface {
-	Soundtracks(imdbID string) (soundtracks []Soundtrack)
+	Soundtracks(imdbID string) (soundtracks []Soundtrack, err error)
 }
 
-type Service struct {
+type ScraperHttpClient struct {
+	Client *http.Client
+	Url    string
+}
+
+func NewScraper(Client *http.Client, Url string) Scraper {
+	return &ScraperHttpClient{Client, Url}
 }
 
 // Soundtracks returns the soundtracks found for the given imdbID
-func (s *Service) Soundtracks(imdbID string) (soundtracks []Soundtrack) {
+func (s *ScraperHttpClient) Soundtracks(imdbID string) (soundtracks []Soundtrack, err error) {
 	if !strings.Contains(imdbID, "tt") {
 		imdbID = "tt" + imdbID
 	}
-	url := fmt.Sprintf("https://www.imdb.com/title/%s/soundtrack", imdbID)
-	doc, err := s.GetGoqueryDocument(url)
+	soundtracks, err = s.getSoundtracks(imdbID)
 	if err != nil {
-		log.Fatal(err)
+		return soundtracks, err
+	}
+	if len(soundtracks) == 0 {
+		soundtracks, err = s.getEpisodeSoundtracks(imdbID)
 	}
 
-	return s.GetSoundtracks(doc)
+	return soundtracks, err
 }
 
-// GetGoqueryDocument returns a Document that takes a string URL as argument
-func (s *Service) GetGoqueryDocument(url string) (doc *goquery.Document, err error) {
-	client := &http.Client{}
+func (s *ScraperHttpClient) getGoqueryDocument(url string) (doc *goquery.Document, err error) {
+	//client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
+	//req, err := s.Client.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Fatalln(err)
+		return doc, err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36")
-	res, err := client.Do(req)
+	//res, err := client.Do(req)
+	res, err := s.Client.Do(req)
 	if err != nil {
-		log.Fatalln(err)
+		return doc, err
 	}
 
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		log.Fatalln(fmt.Errorf("status code error: %d %s, url: %s", res.StatusCode, res.Status, url))
+		errorMessage := fmt.Sprintf("status code error: %d %s, url: %s", res.StatusCode, res.Status, url)
+		err = errors.New(errorMessage)
+		return doc, err
 	}
 	doc, err = goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		log.Fatalln(err)
+		return doc, err
 	}
 	return doc, err
 }
 
-// GetSoundtracks returns all soundtracks found for the given goquery Document
-func (s *Service) GetSoundtracks(doc *goquery.Document) (soundtracks []Soundtrack) {
+// getSoundtracks returns all soundtracks found for the given imdbID
+func (s *ScraperHttpClient) getSoundtracks(imdbID string) (soundtracks []Soundtrack, err error) {
+	//url := fmt.Sprintf("https://www.imdb.com/title/%s/soundtrack", s.Url, imdbID)
+	url := fmt.Sprintf("%s/title/%s/soundtrack", s.Url, imdbID)
+	doc, err := s.getGoqueryDocument(url)
+	if err != nil {
+		return soundtracks, err
+	}
 	doc.Find(".ipc-metadata-list").First().Find("li").Each(func(index int, selection *goquery.Selection) {
-		soundtrack := s.GetSoundtrack(selection)
+		soundtrack := s.getSoundtrack(selection)
 		if len(soundtrack.Artists) > 0 {
 			soundtracks = append(soundtracks, soundtrack)
 		}
 	})
 
-	return soundtracks
+	return soundtracks, err
 }
 
-// GetSoundtrack extracts from the given text all the info of a soundtrack
-func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) {
+func (s *ScraperHttpClient) getEpisodeSoundtracks(imdbID string) (soundtracks []Soundtrack, err error) {
+	season := 1
+	numberEpisodesWithoutSoundtracks := 0
+	for {
+		url := fmt.Sprintf("%s/title/%s/episodes?season=%d", s.Url, imdbID, season)
+		doc, err := s.getGoqueryDocument(url)
+		if err != nil {
+			return soundtracks, err
+		}
+		if numberEpisodesWithoutSoundtracks > 4 {
+			break
+		}
+		var soundtracksFound []Soundtrack
+		doc.Find(".episode-item-wrapper").EachWithBreak(func(index int, selection *goquery.Selection) bool {
+			href, exists := selection.Find("a").First().Attr("href")
+			if !exists {
+				numberEpisodesWithoutSoundtracks++
+				return false
+			}
+			soundtracksFound, err = s.getSoundtracks(getImdbID(href))
+			if err != nil {
+				numberEpisodesWithoutSoundtracks++
+				return false
+			}
+
+			if len(soundtracksFound) > 0 {
+				soundtracks = append(soundtracks, soundtracksFound...)
+			} else {
+				numberEpisodesWithoutSoundtracks++
+			}
+
+			if numberEpisodesWithoutSoundtracks > 4 {
+				return false
+			}
+			return true
+		})
+		if len(soundtracksFound) == 0 {
+			numberEpisodesWithoutSoundtracks++
+		}
+		season++
+	}
+	return soundtracks, err
+}
+
+func (s *ScraperHttpClient) getSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) {
 	soundtrack.Name = getSoundtrackName(doc)
 	if soundtrack.Name == "" {
 		return soundtrack
@@ -104,7 +163,7 @@ func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) 
 						appendAmpersandArtist(artistNodes, artistDoc, role, &soundtrack)
 					}
 					artistNodes.Each(func(index int, artist *goquery.Selection) {
-						artistFound, err := setArtistImdbIDFromGoquerySelection(artist)
+						artistFound, err := s.setArtistImdbIDFromGoquerySelection(artist)
 						if err == nil {
 							artistFound.Role = role
 							soundtrack.Artists = appendArtist(soundtrack.Artists, artistFound)
@@ -126,6 +185,29 @@ func (s *Service) GetSoundtrack(doc *goquery.Selection) (soundtrack Soundtrack) 
 		}
 	})
 	return soundtrack
+}
+
+func (s *ScraperHttpClient) getArtistImage(artistImdbID string) (urlImage string) {
+	url := fmt.Sprintf("%s/name/%s/", s.Url, artistImdbID)
+	doc, err := goquery.NewDocument(url)
+	if err != nil {
+		return urlImage
+	}
+	urlImage, _ = doc.Find("#name-poster").First().Attr("src")
+	return urlImage
+}
+
+func (s *ScraperHttpClient) setArtistImdbIDFromGoquerySelection(artistSelection *goquery.Selection) (artist Artist, err error) {
+	artist.Name = artistSelection.Text()
+	href, exist := artistSelection.Attr("href")
+	if exist {
+		artist.ImdbID = getArtistImdbID(href)
+		if artist.ImdbID == "" {
+			return artist, errors.New("Artist not found")
+		}
+		artist.Image = s.getArtistImage(artist.ImdbID)
+	}
+	return artist, err
 }
 
 func getSoundtrackName(doc *goquery.Selection) string {
@@ -197,29 +279,6 @@ func appendAmpersandArtist(artistNodes *goquery.Selection, artistDoc *goquery.Do
 	}
 }
 
-func setArtistImdbIDFromGoquerySelection(artistSelection *goquery.Selection) (artist Artist, err error) {
-	artist.Name = artistSelection.Text()
-	href, exist := artistSelection.Attr("href")
-	if exist {
-		artist.ImdbID = getArtistImdbID(href)
-		if artist.ImdbID == "" {
-			return artist, errors.New("Artist not found")
-		}
-		artist.Image = getArtistImage(artist.ImdbID)
-	}
-	return artist, err
-}
-
-func getArtistImage(artistImdbID string) (urlImage string) {
-	url := fmt.Sprintf("https://www.imdb.com/name/%s/", artistImdbID)
-	doc, err := goquery.NewDocument(url)
-	if err != nil {
-		return urlImage
-	}
-	urlImage, _ = doc.Find("#name-poster").First().Attr("src")
-	return urlImage
-}
-
 func appendArtist(artists []Artist, artist Artist) []Artist {
 	cleanArtistName(&artist)
 	if skipArtist(artist) {
@@ -272,4 +331,10 @@ func getArtistImdbID(url string) (artistImdbID string) {
 
 func replaceAndByCommas(line string) string {
 	return strings.Replace(line, ", and ", ", ", -1)
+}
+
+func getImdbID(url string) string {
+	re := regexp.MustCompile(`tt[0-9]{7,}`)
+	matches := re.FindStringSubmatch(url)
+	return matches[0]
 }
