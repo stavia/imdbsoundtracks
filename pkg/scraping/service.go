@@ -24,10 +24,6 @@ func NewScraper(Client *http.Client, Url string) Scraper {
 	return &ScraperHttpClient{Client, Url}
 }
 
-// https://golang.cafe/blog/golang-httptest-example.html
-// https://speedscale.com/blog/testing-golang-with-httptest/
-// https://quii.gitbook.io/learn-go-with-tests/build-an-application/http-server
-
 // Soundtracks returns the soundtracks found for the given imdbID
 func (s *ScraperHttpClient) Soundtracks(imdbID string) (soundtracks []Soundtrack, err error) {
 	if !strings.Contains(imdbID, "tt") {
