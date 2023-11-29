@@ -69,7 +69,6 @@ func (s *ScraperHttpClient) getGoqueryDocument(url string) (doc *goquery.Documen
 
 // getSoundtracks returns all soundtracks found for the given imdbID
 func (s *ScraperHttpClient) getSoundtracks(imdbID string) (soundtracks []Soundtrack, err error) {
-	//url := fmt.Sprintf("https://www.imdb.com/title/%s/soundtrack", s.Url, imdbID)
 	url := fmt.Sprintf("%s/title/%s/soundtrack", s.Url, imdbID)
 	doc, err := s.getGoqueryDocument(url)
 	if err != nil {
@@ -104,7 +103,11 @@ func (s *ScraperHttpClient) getEpisodeSoundtracks(imdbID string) (soundtracks []
 				numberEpisodesWithoutSoundtracks++
 				return false
 			}
-			soundtracksFound, err = s.getSoundtracks(getImdbID(href))
+			imdbID := getImdbID(href)
+			if imdbID == "" {
+				return false
+			}
+			soundtracksFound, err = s.getSoundtracks(imdbID)
 			if err != nil {
 				numberEpisodesWithoutSoundtracks++
 				return false
