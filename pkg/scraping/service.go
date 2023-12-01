@@ -339,5 +339,8 @@ func replaceAndByCommas(line string) string {
 func getImdbID(url string) string {
 	re := regexp.MustCompile(`tt[0-9]{7,}`)
 	matches := re.FindStringSubmatch(url)
+	if len(matches) == 0 {
+		return ""
+	}
 	return matches[0]
 }
