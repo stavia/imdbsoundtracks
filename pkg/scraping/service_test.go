@@ -35,18 +35,6 @@ func TestGetLastDanceSoundtrack(t *testing.T) {
 	}
 }
 
-// func TestGetTheMartianSoundtrack(t *testing.T) {
-// 	if *e2e {
-// 		imdbID := "tt3659388"
-// 		service := Service{}
-// 		soundtracks, _ := service.Soundtracks(imdbID)
-// 		expected := 9
-// 		if len(soundtracks) != expected {
-// 			t.Errorf("Expected %v soundtracks, \n got %v", expected, len(soundtracks))
-// 		}
-// 	}
-// }
-
 func TestGetSoundtrackAmericanMary(t *testing.T) {
 	imdbID := "tt1959332"
 	if *update {
