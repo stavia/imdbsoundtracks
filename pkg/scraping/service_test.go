@@ -14,7 +14,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	_ "github.com/PuerkitoBio/goquery"
 )
@@ -232,6 +234,41 @@ func TestGetSoundtrackSwitch(t *testing.T) {
 	if !bytes.Equal(jsonData, goldenData) {
 		t.Errorf("JSON does not match .golden file")
 		t.Errorf("Expected \n%v, got \n%v", string(goldenData), string(jsonData))
+	}
+}
+
+func TestGetEpisodeSoundtracksStopsOnRepeatedSeason(t *testing.T) {
+	episodeHTML := `<html><body>
+		<div class="episode-item-wrapper"><a href="/title/tt9990001/?ref_=ttep"></a></div>
+	</body></html>`
+	var seasonRequests int
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/episodes") {
+			seasonRequests++
+			fmt.Fprint(w, episodeHTML)
+			return
+		}
+		fmt.Fprint(w, `<html><body></body></html>`)
+	}))
+	defer svr.Close()
+
+	service := NewScraper(&http.Client{}, svr.URL)
+	done := make(chan error, 1)
+	go func() {
+		_, err := service.Soundtracks("tt0000001")
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Soundtracks() error = %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Soundtracks() did not stop crawling repeating season pages")
+	}
+	if seasonRequests > 2 {
+		t.Fatalf("expected at most 2 season page fetches, got %d", seasonRequests)
 	}
 }
 

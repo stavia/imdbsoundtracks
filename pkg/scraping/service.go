@@ -84,50 +84,74 @@ func (s *ScraperHttpClient) getSoundtracks(imdbID string) (soundtracks []Soundtr
 	return soundtracks, err
 }
 
+const (
+	maxSeasons                    = 100
+	maxEpisodesWithoutSoundtracks = 4
+	maxEmptySeasonPages           = 2
+)
+
 func (s *ScraperHttpClient) getEpisodeSoundtracks(imdbID string) (soundtracks []Soundtrack, err error) {
-	season := 1
-	numberEpisodesWithoutSoundtracks := 0
-	for {
-		url := fmt.Sprintf("%s/title/%s/episodes?season=%d", s.Url, imdbID, season)
-		doc, err := s.getGoqueryDocument(url)
-		if err != nil {
-			return soundtracks, err
-		}
-		if numberEpisodesWithoutSoundtracks > 4 {
+	episodesWithoutSoundtracks := 0
+	emptySeasonPages := 0
+	seenEpisodes := make(map[string]struct{})
+
+	for season := 1; season <= maxSeasons; season++ {
+		if episodesWithoutSoundtracks > maxEpisodesWithoutSoundtracks {
 			break
 		}
-		var soundtracksFound []Soundtrack
-		doc.Find(".episode-item-wrapper").EachWithBreak(func(index int, selection *goquery.Selection) bool {
+		url := fmt.Sprintf("%s/title/%s/episodes?season=%d", s.Url, imdbID, season)
+		doc, docErr := s.getGoqueryDocument(url)
+		if docErr != nil {
+			return soundtracks, docErr
+		}
+
+		episodeItems := doc.Find(".episode-item-wrapper")
+		if episodeItems.Length() == 0 {
+			emptySeasonPages++
+			if emptySeasonPages >= maxEmptySeasonPages {
+				break
+			}
+			continue
+		}
+		emptySeasonPages = 0
+
+		repeatedSeason := false
+		episodeItems.EachWithBreak(func(_ int, selection *goquery.Selection) bool {
+			if episodesWithoutSoundtracks > maxEpisodesWithoutSoundtracks {
+				return false
+			}
 			href, exists := selection.Find("a").First().Attr("href")
 			if !exists {
-				numberEpisodesWithoutSoundtracks++
+				episodesWithoutSoundtracks++
+				return true
+			}
+			episodeID := getImdbID(href)
+			if episodeID == "" {
+				episodesWithoutSoundtracks++
+				return true
+			}
+			if _, seen := seenEpisodes[episodeID]; seen {
+				repeatedSeason = true
 				return false
 			}
-			imdbID := getImdbID(href)
-			if imdbID == "" {
-				return false
-			}
-			soundtracksFound, err = s.getSoundtracks(imdbID)
-			if err != nil {
-				numberEpisodesWithoutSoundtracks++
-				return false
-			}
+			seenEpisodes[episodeID] = struct{}{}
 
-			if len(soundtracksFound) > 0 {
-				soundtracks = append(soundtracks, soundtracksFound...)
-			} else {
-				numberEpisodesWithoutSoundtracks++
+			found, getErr := s.getSoundtracks(episodeID)
+			if getErr != nil {
+				err = getErr
+				episodesWithoutSoundtracks++
+				return true
 			}
-
-			if numberEpisodesWithoutSoundtracks > 4 {
-				return false
+			if len(found) == 0 {
+				episodesWithoutSoundtracks++
+				return true
 			}
+			soundtracks = append(soundtracks, found...)
 			return true
 		})
-		if len(soundtracksFound) == 0 {
-			numberEpisodesWithoutSoundtracks++
+		if repeatedSeason {
+			break
 		}
-		season++
 	}
 	return soundtracks, err
 }
