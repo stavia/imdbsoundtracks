@@ -216,11 +216,14 @@ func (s *ScraperHttpClient) getSoundtrack(doc *goquery.Selection) (soundtrack So
 
 func (s *ScraperHttpClient) getArtistImage(artistImdbID string) (urlImage string) {
 	url := fmt.Sprintf("%s/name/%s/", s.Url, artistImdbID)
-	doc, err := goquery.NewDocument(url)
+	doc, err := s.getGoqueryDocument(url)
 	if err != nil {
 		return urlImage
 	}
-	urlImage, _ = doc.Find("#name-poster").First().Attr("src")
+	if src, exists := doc.Find("#name-poster").First().Attr("src"); exists && src != "" {
+		return src
+	}
+	urlImage, _ = doc.Find(`meta[property="og:image"]`).First().Attr("content")
 	return urlImage
 }
 

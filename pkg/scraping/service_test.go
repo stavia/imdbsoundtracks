@@ -44,9 +44,7 @@ func TestGetSoundtrackAmericanMary(t *testing.T) {
 		os.WriteFile(filepath.Join("test-fixtures", "american_mary.html"), content, 0644)
 	}
 	expected, _ := ioutil.ReadFile(filepath.Join("test-fixtures", "american_mary.html"))
-	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, string(expected))
-	}))
+	svr := newSoundtrackServer(expected)
 	defer svr.Close()
 	client := &http.Client{}
 	service := NewScraper(client, svr.URL)
@@ -69,9 +67,7 @@ func TestGetSoundtrackJoker(t *testing.T) {
 		os.WriteFile(filepath.Join("test-fixtures", "joker.html"), content, 0644)
 	}
 	expected, _ := ioutil.ReadFile(filepath.Join("test-fixtures", "joker.html"))
-	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, string(expected))
-	}))
+	svr := newSoundtrackServer(expected)
 	defer svr.Close()
 	client := &http.Client{}
 	service := NewScraper(client, svr.URL)
@@ -94,9 +90,7 @@ func TestGetSoundtrackIrishConnection(t *testing.T) {
 		os.WriteFile(filepath.Join("test-fixtures", "irish_connection.html"), content, 0644)
 	}
 	expected, _ := ioutil.ReadFile(filepath.Join("test-fixtures", "irish_connection.html"))
-	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, string(expected))
-	}))
+	svr := newSoundtrackServer(expected)
 	defer svr.Close()
 	client := &http.Client{}
 	service := NewScraper(client, svr.URL)
@@ -119,9 +113,7 @@ func TestGetSoundtrackMarryMe(t *testing.T) {
 		os.WriteFile(filepath.Join("test-fixtures", "marry_me.html"), content, 0644)
 	}
 	expected, _ := ioutil.ReadFile(filepath.Join("test-fixtures", "marry_me.html"))
-	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, string(expected))
-	}))
+	svr := newSoundtrackServer(expected)
 	defer svr.Close()
 	client := &http.Client{}
 	service := NewScraper(client, svr.URL)
@@ -144,9 +136,7 @@ func TestGetSoundtrackSeniorYear(t *testing.T) {
 		os.WriteFile(filepath.Join("test-fixtures", "senior_year.html"), content, 0644)
 	}
 	expected, _ := ioutil.ReadFile(filepath.Join("test-fixtures", "senior_year.html"))
-	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, string(expected))
-	}))
+	svr := newSoundtrackServer(expected)
 	defer svr.Close()
 	client := &http.Client{}
 	service := NewScraper(client, svr.URL)
@@ -169,9 +159,7 @@ func TestGetSoundtrackArmageddonTime(t *testing.T) {
 		os.WriteFile(filepath.Join("test-fixtures", "armageddon_time.html"), content, 0644)
 	}
 	expected, _ := ioutil.ReadFile(filepath.Join("test-fixtures", "armageddon_time.html"))
-	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, string(expected))
-	}))
+	svr := newSoundtrackServer(expected)
 	defer svr.Close()
 	client := &http.Client{}
 	service := NewScraper(client, svr.URL)
@@ -194,9 +182,7 @@ func TestGetSoundtrackAlienAbduction(t *testing.T) {
 		os.WriteFile(filepath.Join("test-fixtures", "alien_abduction.html"), content, 0644)
 	}
 	expected, _ := ioutil.ReadFile(filepath.Join("test-fixtures", "alien_abduction.html"))
-	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, string(expected))
-	}))
+	svr := newSoundtrackServer(expected)
 	defer svr.Close()
 	client := &http.Client{}
 	service := NewScraper(client, svr.URL)
@@ -219,9 +205,7 @@ func TestGetSoundtrackSwitch(t *testing.T) {
 		os.WriteFile(filepath.Join("test-fixtures", "switch.html"), content, 0644)
 	}
 	expected, _ := ioutil.ReadFile(filepath.Join("test-fixtures", "switch.html"))
-	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, string(expected))
-	}))
+	svr := newSoundtrackServer(expected)
 	defer svr.Close()
 	client := &http.Client{}
 	service := NewScraper(client, svr.URL)
@@ -270,6 +254,35 @@ func TestGetEpisodeSoundtracksStopsOnRepeatedSeason(t *testing.T) {
 	if seasonRequests > 2 {
 		t.Fatalf("expected at most 2 season page fetches, got %d", seasonRequests)
 	}
+}
+
+func TestGetArtistImageUsesScraperClient(t *testing.T) {
+	const want = "https://example.com/artist.jpg"
+	var gotUserAgent string
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUserAgent = r.Header.Get("User-Agent")
+		fmt.Fprintf(w, `<html><head><meta property="og:image" content="%s"/></head></html>`, want)
+	}))
+	defer svr.Close()
+
+	scraper := NewScraper(&http.Client{}, svr.URL).(*ScraperHttpClient)
+	got := scraper.getArtistImage("nm0000001")
+	if got != want {
+		t.Fatalf("getArtistImage() = %q, want %q", got, want)
+	}
+	if gotUserAgent == "" {
+		t.Fatal("expected request to include a User-Agent")
+	}
+}
+
+func newSoundtrackServer(html []byte) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/name/") {
+			fmt.Fprint(w, `<html><body></body></html>`)
+			return
+		}
+		fmt.Fprint(w, string(html))
+	}))
 }
 
 func getHtml(imdbID string) []byte {
