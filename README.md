@@ -10,13 +10,22 @@ go get -u github.com/stavia/imdbsoundtracks/pkg/scraping
 
 Import the package
 ```go
-import "github.com/stavia/imdbsoundtracks/pkg/scraping"
+import (
+    "log"
+    "net/http"
+
+    "github.com/stavia/imdbsoundtracks/pkg/scraping"
+)
 ```
 
 Construct a new scraping service, then get all soundtracks for the IMDb id tt7286456 ([Joker 2019](https://www.imdb.com/title/tt7286456/))
 ```go
-scraper := new(scraping.Service)
-soundtracks := scraper.Soundtracks("tt7286456")
+client := &http.Client{}
+scraper := scraping.NewScraper(client, "https://www.imdb.com")
+soundtracks, err := scraper.Soundtracks("tt7286456")
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 Loop through and print all soundtracks
